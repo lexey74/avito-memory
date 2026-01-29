@@ -33,6 +33,7 @@ function determineContext(element) {
 
 let isInjecting = false;
 let injectionTimeout = null;
+let currentItemId = null; // Track current item for URL change detection
 
 /**
  * Attempts to Inject into the Main Single Item Page.
@@ -42,46 +43,27 @@ async function injectSinglePageUI() {
     // Global Lock check
     if (isInjecting) return;
 
-    // Check if already injected (fast check)
-    if (document.getElementById('avito-memory-panel-root')) return;
-
     try {
         isInjecting = true;
 
-        // 1. Check if Single Page
-        // URL pattern: ..._1234567890
-        // And existence of an H1 and Price block.
-
-        // Selectors for Single Item ID.
-        // Usually found in `div.style-item-view-content...` -> `div[data-item-id]`?
-        // Often Avito puts the ID in `<div data-item-id="123..." ...>` at the top level of the ad parameter block.
-
-        // Let's try to find the ID from the metadata if possible
-        let itemId;
-        // Single page ID is often in the URL, but let's be robust.
-        const metaId = document.querySelector('[data-item-id]'); // Still risky on single page if suggestions exist
-
-
-        // Better: From the URL?
-        // ..._(\d+)$ is not always true, sometimes ..._(\d+)?...
+        // Extract item ID from URL first
         const urlMatch = window.location.pathname.match(/_(\d+)(\?|$)/);
-        if (!urlMatch) return; // Not a single item page or ID not found
+        if (!urlMatch) return; // Not a single item page
 
-        itemId = urlMatch[1];
+        const itemId = urlMatch[1];
 
-        // Check if already injected
-        if (document.getElementById('avito-memory-panel-root')) return;
+        // Update current item ID for URL monitoring
+        currentItemId = itemId;
+
+        // If panel already exists, skip
+        if (document.getElementById('avito-memory-panel-root')) {
+            return;
+        }
+
         // Legacy check
         if (document.getElementById('am-single-panel')) return;
 
         // Find injection target
-        // We want it near the price or contacts.
-        // `.style-item-view-price-string` or `.style-price-value...`
-        // Or underneath `.style-item-view-contacts...`
-
-        // Find injection target
-        // User requested anchoring to Title or Photo.
-        // Verified Marker: [data-marker="item-view/title-info"]
         const targetElement = document.querySelector('[data-marker="item-view/title-info"]');
 
         if (!targetElement) {
@@ -90,7 +72,6 @@ async function injectSinglePageUI() {
         }
 
         // Prepare Data
-        // For single page, we should extract fingerprint from the whole page.
         const details = fingerprint.extract(document.body, 'single');
         const fpHash = fingerprint.generate(details);
 
@@ -107,14 +88,24 @@ async function injectSinglePageUI() {
             });
         });
 
-        // DOUBLE CHECK before insertion (in case another async call finished while we were awaiting storage)
+        // DOUBLE CHECK before insertion
         if (document.getElementById('avito-memory-panel-root')) return;
 
-        panel.id = 'avito-memory-panel-root'; // Ensure ID matches our check
-        // Also verify strict ID on the element itself if UI didn't set it (UI does set it, but be safe)
+        panel.id = 'avito-memory-panel-root';
 
-        // Insert AFTER the Title
-        targetElement.insertAdjacentElement('afterend', panel);
+        // Create a WRAPPER that we fully control
+        // This wrapper will be inserted into DOM and Avito won't remove it
+        const wrapper = document.createElement('div');
+        wrapper.id = 'avito-memory-wrapper';
+        wrapper.setAttribute('data-avito-memory-wrapper', 'true');
+        wrapper.style.cssText = 'position: relative; z-index: 1000; pointer-events: auto;';
+
+        // Put panel inside wrapper
+        wrapper.appendChild(panel);
+
+        // Insert wrapper AFTER the Title
+        targetElement.insertAdjacentElement('afterend', wrapper);
+
         console.log(`[AvitoMemory] Injected Single Page UI for ${itemId}`);
 
     } finally {
@@ -169,16 +160,30 @@ async function processListItem(element) {
 // ---------------------------
 
 const observer = new MutationObserver((mutations) => {
-    // Early exit if panel already exists - prevents unnecessary debounce triggers
-    if (document.getElementById('avito-memory-panel-root')) {
+    // 1. If wrapper exists, we are good.
+    if (document.getElementById('avito-memory-wrapper')) {
         return;
     }
 
-    // Debounce the injection call
+    // 2. If wrapper is missing, check if we SHOULD have one (are we on a single item page?)
+    const urlMatch = window.location.pathname.match(/_(\d+)(\?|$)/);
+    if (urlMatch) {
+        const itemId = urlMatch[1];
+        // If we are on the SAME item that we decided to inject previously,
+        // this is likely a re-render removal. We must restore INSTANTLY.
+        if (currentItemId === itemId) {
+            console.log('[AvitoMemory] Panel removed by page update! Restoring immediately...');
+            if (injectionTimeout) clearTimeout(injectionTimeout);
+            injectSinglePageUI(); // No delay
+            return;
+        }
+    }
+
+    // 3. Normal Debounce for looking for new Items (List view or new page)
     if (injectionTimeout) clearTimeout(injectionTimeout);
     injectionTimeout = setTimeout(() => {
         injectSinglePageUI();
-    }, 200); // Wait 200ms for DOM to settle
+    }, 200);
 
     for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
@@ -209,6 +214,20 @@ function initialScan() {
 
     observer.observe(document.body, OBSERVER_CONFIG);
 }
+
+// Monitor URL changes for SPA navigation
+let lastUrl = window.location.href;
+setInterval(() => {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl) {
+        console.log('[AvitoMemory] URL changed, resetting injection state');
+        lastUrl = currentUrl;
+        // Clear any pending injection
+        if (injectionTimeout) clearTimeout(injectionTimeout);
+        // Try immediate injection on URL change
+        setTimeout(() => injectSinglePageUI(), 100);
+    }
+}, 500);
 
 // Run
 if (document.readyState === 'loading') {
