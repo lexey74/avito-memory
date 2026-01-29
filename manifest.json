@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Avito Memory",
+  "version": "1.0",
+  "description": "Отмечай товары и оставляй заметки. Сохраненне товары на странице Параметры",
+  "permissions": [
+    "storage"
+  ],
+  "action": {},
+  "host_permissions": [
+    "*://*.avito.ru/*",
+    "*://*.avito.st/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.avito.ru/*"
+      ],
+      "js": [
+        "src/storage.js",
+        "src/fingerprint.js",
+        "src/ui.js",
+        "src/content.js"
+      ],
+      "css": [
+        "src/styles.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

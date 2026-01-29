@@ -1,0 +1,100 @@
+/* Avito Memory Extension Styles */
+
+/* --- Single Item Panel --- */
+.am-controls-panel {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  /* Limit width on big screens */
+}
+
+.am-buttons-row {
+  display: flex;
+  gap: 12px;
+}
+
+.am-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  opacity: 0.5;
+}
+
+.am-btn:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
+}
+
+.am-btn.selected {
+  opacity: 1;
+  border-color: #333;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.am-btn-good {
+  background-color: #2ecc71;
+}
+
+/* Nice Green */
+.am-btn-avg {
+  background-color: #f1c40f;
+}
+
+/* Yellow */
+.am-btn-bad {
+  background-color: #e74c3c;
+}
+
+/* Red */
+
+.am-note-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.am-note-textarea:focus {
+  outline: none;
+  border-color: #00aaff;
+}
+
+/* --- List View Badge --- */
+.am-status-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  /* Position top-left usually interferes less with favorites heart? Or check avito layout */
+  /* Avito hearts are usually top-right. Let's try top-left. */
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  z-index: 10;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.am-bg-good {
+  background-color: #2ecc71;
+}
+
+.am-bg-average {
+  background-color: #f1c40f;
+}
+
+.am-bg-bad {
+  background-color: #e74c3c;
+}
