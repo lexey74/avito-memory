@@ -169,6 +169,11 @@ async function processListItem(element) {
 // ---------------------------
 
 const observer = new MutationObserver((mutations) => {
+    // Early exit if panel already exists - prevents unnecessary debounce triggers
+    if (document.getElementById('avito-memory-panel-root')) {
+        return;
+    }
+
     // Debounce the injection call
     if (injectionTimeout) clearTimeout(injectionTimeout);
     injectionTimeout = setTimeout(() => {
