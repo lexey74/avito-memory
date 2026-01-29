@@ -155,9 +155,16 @@ const UI = {
         container.addEventListener('click', (e) => e.stopPropagation());
         container.addEventListener('mousedown', (e) => e.stopPropagation());
 
-        // 1. Buttons Row
-        const btnRow = document.createElement('div');
-        btnRow.className = 'am-buttons-row';
+        // 1. Top Row: Buttons + Category
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.alignItems = 'center';
+        topRow.style.marginBottom = '12px';
+
+        // Buttons Wrapper
+        const btnWrapper = document.createElement('div');
+        btnWrapper.style.display = 'flex';
+        btnWrapper.style.marginRight = '12px';
 
         const statuses = [
             { id: 'good', label: '👍', color: '#4caf50' },
@@ -180,17 +187,17 @@ const UI = {
             btn.style.borderRadius = '50%';
             btn.style.border = '2px solid #ddd';
             btn.style.background = 'white';
-            btn.style.marginRight = '8px';
+            btn.style.marginRight = '6px';
             btn.style.cursor = 'pointer';
             btn.style.display = 'flex';
             btn.style.alignItems = 'center';
             btn.style.justifyContent = 'center';
             btn.style.transition = 'all 0.2s ease';
+            btn.style.flexShrink = '0'; // Prevent shrinking
 
             if (activeStatus === s.id) {
                 btn.classList.add('selected');
                 // active style
-                btn.style.backgroundColor = s.color; // Used as background or border? Let's use as bg for active
                 btn.style.borderColor = s.color;
                 btn.style.backgroundColor = '#fff';
                 btn.style.boxShadow = `inset 0 0 0 4px ${s.color}`; // Highlight
@@ -198,13 +205,12 @@ const UI = {
 
             btn.onclick = () => {
                 // Toggle logic
-                btnRow.querySelectorAll('.am-btn').forEach(b => b.classList.remove('selected'));
+                btnWrapper.querySelectorAll('.am-btn').forEach(b => b.classList.remove('selected'));
                 // Reset styles
-                btnRow.querySelectorAll('.am-btn').forEach(b => {
+                btnWrapper.querySelectorAll('.am-btn').forEach(b => {
                     b.style.backgroundColor = 'white';
                     b.style.boxShadow = 'none';
                 });
-
 
                 if (activeStatus === s.id) {
                     activeStatus = null;
@@ -218,25 +224,23 @@ const UI = {
                 onSave(activeStatus, commentInput.value, categoryInput.value);
             };
 
-            btnRow.appendChild(btn);
+            btnWrapper.appendChild(btn);
         });
 
-        container.appendChild(btnRow);
+        topRow.appendChild(btnWrapper);
 
-        // 2. Category Input (New)
-        const categoryContainer = document.createElement('div');
-        categoryContainer.style.marginTop = '12px';
-
+        // Category Input (Compact)
         const categoryInput = document.createElement('input');
         categoryInput.type = 'text';
         categoryInput.setAttribute('list', 'am-categories-list');
-        categoryInput.placeholder = 'Категория (например, Авто)';
+        categoryInput.placeholder = 'Категория';
         categoryInput.value = currentCategory || '';
-        categoryInput.style.width = '100%';
+        categoryInput.style.flex = '1'; // Take remaining space
         categoryInput.style.padding = '8px';
         categoryInput.style.border = '1px solid #ccc';
         categoryInput.style.borderRadius = '4px';
-        categoryInput.style.marginBottom = '4px';
+        categoryInput.style.height = '42px'; // Match button height
+        categoryInput.style.boxSizing = 'border-box'; // Ensure padding doesn't affect height
 
         const datalist = document.createElement('datalist');
         datalist.id = 'am-categories-list';
@@ -253,20 +257,20 @@ const UI = {
             onSave(activeStatus, commentInput.value, categoryInput.value);
         });
 
-        categoryContainer.appendChild(categoryInput);
-        categoryContainer.appendChild(datalist);
-        container.appendChild(categoryContainer);
+        topRow.appendChild(categoryInput);
+        topRow.appendChild(datalist);
+        container.appendChild(topRow);
 
-        // 3. Comment Area
+        // 3. Comment Area (Now 2nd row visually)
         const commentContainer = document.createElement('div');
-        commentContainer.style.marginTop = '8px';
+        commentContainer.style.marginTop = '0px';
 
         const commentInput = document.createElement('textarea');
         commentInput.placeholder = 'Комментарий...';
         commentInput.style.width = '100%';
         commentInput.style.minHeight = '60px';
         commentInput.style.padding = '8px';
-        commentInput.style.marginTop = '0px'; // Closer to category
+        commentInput.style.marginTop = '0px';
         commentInput.style.border = '1px solid #ccc';
         commentInput.style.borderRadius = '4px';
         commentInput.style.resize = 'vertical';
