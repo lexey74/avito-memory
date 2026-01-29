@@ -75,15 +75,22 @@ async function injectSinglePageUI() {
         const details = fingerprint.extract(document.body, 'single');
         const fpHash = fingerprint.generate(details);
 
-        const checkResult = await storage.findAd(itemId, fpHash);
+        // Fetch ad data and all categories in parallel
+        const [checkResult, allCategories] = await Promise.all([
+            storage.findAd(itemId, fpHash),
+            storage.getAllCategories()
+        ]);
+
         const status = checkResult.found ? checkResult.data.status : null;
         const note = checkResult.found ? checkResult.data.note : '';
+        const category = checkResult.found ? checkResult.data.category : '';
 
         // Create UI
-        const panel = ui.createControlPanel(status, note, async (newStatus, newNote) => {
+        const panel = ui.createControlPanel(status, note, category, allCategories, async (newStatus, newNote, newCategory) => {
             await storage.saveAd(itemId, fpHash, {
                 status: newStatus,
                 note: newNote,
+                category: newCategory,
                 details: details
             });
         });

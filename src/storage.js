@@ -89,6 +89,23 @@ const Storage = {
         }
 
         return { found: false, data: null, source: null };
+    },
+
+    /**
+     * Retrieves all unique categories from stored items.
+     * @returns {Promise<string[]>} Sorted list of unique categories.
+     */
+    async getAllCategories() {
+        const allData = await chrome.storage.local.get(null);
+        const categories = new Set();
+
+        for (const [key, value] of Object.entries(allData)) {
+            if (key.startsWith('item_') && value.category) {
+                categories.add(value.category.trim());
+            }
+        }
+
+        return Array.from(categories).sort();
     }
 };
 

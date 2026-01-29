@@ -131,10 +131,12 @@ const UI = {
      * Creates the full control panel for Single Item View.
      * @param {string} currentStatus - 'good', 'average', 'bad', or null
      * @param {string} currentNote - existing note or ''
-     * @param {function} onSave - callback(status, note)
+     * @param {string} currentCategory - existing category or ''
+     * @param {string[]} allCategories - list of available categories for autocomplete
+     * @param {function} onSave - callback(status, note, category)
      * @returns {HTMLElement}
      */
-    createControlPanel(currentStatus, currentNote, onSave) {
+    createControlPanel(currentStatus, currentNote, currentCategory, allCategories, onSave) {
         if (document.getElementById('avito-memory-panel-root')) {
             return null; // Already exists globally, or we can check strict context
         }
@@ -164,7 +166,6 @@ const UI = {
         ];
 
         let activeStatus = currentStatus;
-        // The noteInput is now replaced by commentInput and its handling is moved to the save button.
 
         statuses.forEach(s => {
             const btn = document.createElement('button');
@@ -213,10 +214,8 @@ const UI = {
                     btn.style.boxShadow = `inset 0 0 0 4px ${s.color}`;
                 }
 
-                // Trigger save on status change
-                // (Previously this was just setting state, but typically status change should save immediately too or wait for blur?
-                // Let's assume status change saves immediately for responsiveness).
-                onSave(activeStatus, commentInput.value);
+                // Trigger save
+                onSave(activeStatus, commentInput.value, categoryInput.value);
             };
 
             btnRow.appendChild(btn);
@@ -224,16 +223,50 @@ const UI = {
 
         container.appendChild(btnRow);
 
-        // Comment Area
+        // 2. Category Input (New)
+        const categoryContainer = document.createElement('div');
+        categoryContainer.style.marginTop = '12px';
+
+        const categoryInput = document.createElement('input');
+        categoryInput.type = 'text';
+        categoryInput.setAttribute('list', 'am-categories-list');
+        categoryInput.placeholder = 'Категория (например, Авто)';
+        categoryInput.value = currentCategory || '';
+        categoryInput.style.width = '100%';
+        categoryInput.style.padding = '8px';
+        categoryInput.style.border = '1px solid #ccc';
+        categoryInput.style.borderRadius = '4px';
+        categoryInput.style.marginBottom = '4px';
+
+        const datalist = document.createElement('datalist');
+        datalist.id = 'am-categories-list';
+        if (allCategories && allCategories.length > 0) {
+            allCategories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                datalist.appendChild(option);
+            });
+        }
+
+        // Auto-save category on blur
+        categoryInput.addEventListener('blur', () => {
+            onSave(activeStatus, commentInput.value, categoryInput.value);
+        });
+
+        categoryContainer.appendChild(categoryInput);
+        categoryContainer.appendChild(datalist);
+        container.appendChild(categoryContainer);
+
+        // 3. Comment Area
         const commentContainer = document.createElement('div');
-        commentContainer.style.marginTop = '12px';
+        commentContainer.style.marginTop = '8px';
 
         const commentInput = document.createElement('textarea');
         commentInput.placeholder = 'Комментарий...';
         commentInput.style.width = '100%';
         commentInput.style.minHeight = '60px';
         commentInput.style.padding = '8px';
-        commentInput.style.marginTop = '8px';
+        commentInput.style.marginTop = '0px'; // Closer to category
         commentInput.style.border = '1px solid #ccc';
         commentInput.style.borderRadius = '4px';
         commentInput.style.resize = 'vertical';
@@ -241,7 +274,7 @@ const UI = {
 
         // Auto-save on blur (loss of focus)
         commentInput.addEventListener('blur', () => {
-            onSave(activeStatus, commentInput.value);
+            onSave(activeStatus, commentInput.value, categoryInput.value);
         });
 
         commentContainer.appendChild(commentInput);

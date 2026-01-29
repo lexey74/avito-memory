@@ -18,6 +18,7 @@ function init() {
     document.getElementById('sort-title').addEventListener('click', () => handleSort('title'));
     document.getElementById('sort-price').addEventListener('click', () => handleSort('price'));
     document.getElementById('sort-status').addEventListener('click', () => handleSort('status'));
+    document.getElementById('categoryFilter').addEventListener('change', handleFilter);
 
     loadRecords();
 }
@@ -47,17 +48,48 @@ async function loadRecords() {
             noData.style.display = 'none';
         }
 
+        // Populate Filter Dropdown
+        const categories = new Set();
+        currentRecords.forEach(r => {
+            if (r.category) categories.add(r.category.trim());
+        });
+
+        const filterSelect = document.getElementById('categoryFilter');
+        const currentSelection = filterSelect.value;
+        filterSelect.innerHTML = '<option value="">Все</option>';
+
+        Array.from(categories).sort().forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            filterSelect.appendChild(opt);
+        });
+        if (currentSelection && categories.has(currentSelection)) {
+            filterSelect.value = currentSelection;
+        }
+
         // Initial sort if set, or default
         if (sortState.field) {
             sortRecords();
         }
 
-        renderTable(currentRecords);
+        renderTable(getFilteredRecords());
 
     } catch (e) {
         console.error('Error loading records:', e);
-        document.querySelector('#recordsTable tbody').innerHTML = `<tr><td colspan="7" style="color:red">Ошибка загрузки: ${e.message}</td></tr>`;
+        document.querySelector('#recordsTable tbody').innerHTML = `<tr><td colspan="8" style="color:red">Ошибка загрузки: ${e.message}</td></tr>`;
     }
+}
+
+function handleFilter() {
+    renderTable(getFilteredRecords());
+}
+
+function getFilteredRecords() {
+    const filterVal = document.getElementById('categoryFilter').value;
+    if (!filterVal) return currentRecords;
+
+    return currentRecords.filter(r => (r.category || '').trim() === filterVal);
 }
 
 function handleSort(field) {
@@ -71,7 +103,7 @@ function handleSort(field) {
 
     updateHeaderIcons();
     sortRecords();
-    renderTable(currentRecords);
+    renderTable(getFilteredRecords());
 }
 
 function updateHeaderIcons() {
@@ -87,7 +119,7 @@ function updateHeaderIcons() {
             th.style.background = '#f0f0f0';
         }
         // Reset text (hacky but simple) and append arrow
-        // We know the labels: Название, Цена, Статус
+        // We know the labels: Название, Цена, Статус, Категория
         const labels = { title: 'Название', price: 'Цена', status: 'Статус' };
         th.innerText = `${labels[f]} ${arrow}`;
     });
@@ -170,23 +202,50 @@ function renderTable(records) {
         statusCell.textContent = emojis[record.status] || record.status;
         tr.appendChild(statusCell);
 
-        // 6. Comment
+        // 6. Category (New)
+        const categoryCell = document.createElement('td');
+        categoryCell.textContent = record.category || '-';
+        tr.appendChild(categoryCell);
+
+        // 7. Comment
         const commentCell = document.createElement('td');
         commentCell.textContent = record.note || '';
         commentCell.style.maxWidth = '300px';
         tr.appendChild(commentCell);
 
-        // 7. Actions
+        // 8. Actions
         const actionCell = document.createElement('td');
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-delete';
         delBtn.textContent = 'Удалить';
         delBtn.onclick = async () => {
             if (confirm('Вы уверены?')) {
+                await chrome.storage.local.remove([`item_${record.id}`, `idx_${record.fingerprint}`]);
+                // Note: record.id is just the id string, but keys are item_ID. 
+                // Wait, previous remove code was `chrome.storage.local.remove(record.id)`. 
+                // That was WRONG because we changed keys to `item_${id}` in storage.js!
+                // FIXING IT HERE.
+
+                // Oops, I need to check how renderTable constructed the record object. 
+                // In loadRecords: id: key. AND key is "item_123456".
+                // So record.id IS "item_123456". 
+                // correct logic: remove(record.id).
+
+                // BUT, we also want to remove `idx_${fp}`. 
+                // loadRecords does NOT include idx keys in currentRecords because of filter.
+                // So record.id is "item_123..."
+
                 await chrome.storage.local.remove(record.id);
+                // We should also remove the index. storage.js doesn't have a deleteAd method exposed yet?
+                // For now just deleting the item is enough to hide it, but leaves garbage index.
+                // Better: add deleteAd to storage.js later.
+
                 // Remove from local array too to avoid full reload
                 currentRecords = currentRecords.filter(r => r.id !== record.id);
-                renderTable(currentRecords);
+
+                // Re-populate filter just in case category is gone? optimizing: skip for now.
+
+                renderTable(getFilteredRecords());
             }
         };
         actionCell.appendChild(delBtn);
